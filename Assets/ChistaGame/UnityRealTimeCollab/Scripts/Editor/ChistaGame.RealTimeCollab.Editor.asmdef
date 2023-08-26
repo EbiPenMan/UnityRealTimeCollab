@@ -1,0 +1,22 @@
+{
+    "name": "ChistaGame.RealTimeCollab.Editor",
+    "rootNamespace": "ChistaGame.RealTimeCollab.Editor",
+    "references": [
+        "UniTask",
+        "UniTask.Linq",
+        "UniTask.Editor"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "websocket-sharp.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
