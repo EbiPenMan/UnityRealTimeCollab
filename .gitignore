@@ -128,3 +128,4 @@ VSCode/*
 /api-refrence-generator/_site
 /api-refrence-generator/obj
 Assets/Infinite8/LandRocker/Projects/Builder/Art/TriLib/Screenshot/Thumbs.db.meta
+.sonarqube

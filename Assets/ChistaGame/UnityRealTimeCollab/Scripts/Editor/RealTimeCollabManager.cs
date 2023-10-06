@@ -1,11 +1,21 @@
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
+using System.Text.RegularExpressions;
+using ChistaGame.RealTimeCollab.Editor.Models;
 using Cysharp.Threading.Tasks;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
 using WebSocketSharp;
 using WebSocketSharp.Server;
+using Debug = UnityEngine.Debug;
+using Formatting = Newtonsoft.Json.Formatting;
 
 namespace ChistaGame.RealTimeCollab.Editor
 {
@@ -15,6 +25,7 @@ namespace ChistaGame.RealTimeCollab.Editor
         private TcpListener _server;
         private TcpClient _client;
         private WebSocketServer _wssv;
+
 
         [MenuItem("ChistaGame/RealTime Collab/Main Window")]
         public static void ShowExample()
@@ -91,6 +102,7 @@ namespace ChistaGame.RealTimeCollab.Editor
             _isCreatedServer = false;
             Debug.unityLogger.Log("RealTimeCollabManager | DestroyServer | End");
         }
+
         public void DestroyServerNew()
         {
             Debug.unityLogger.Log("RealTimeCollabManager | DestroyServer | Start");
@@ -112,6 +124,7 @@ namespace ChistaGame.RealTimeCollab.Editor
         {
             Debug.unityLogger.Log("RealTimeCollabManager | OnEnable | Start");
             if (!_isCreatedServer) CreateServerNew().Forget();
+            CompareFileHistory().Forget();
         }
 
         private void OnDisable()
@@ -124,6 +137,72 @@ namespace ChistaGame.RealTimeCollab.Editor
         {
             Debug.unityLogger.Log("RealTimeCollabManager | OnDestroy | Start");
             DestroyServerNew();
+        }
+
+        private async UniTask CompareFileHistory(
+            string filePath = "Assets/ChistaGame/UnityRealTimeCollab/Prefabs/Cube.prefab")
+        {
+            Debug.unityLogger.Log("RealTimeCollabManager | CompareFileHistory | start");
+            // string prettyFormat1 = ;
+            // string formatString = "--pretty=format:'{%n  \"commit\": \"%h\",%n  \"author\": \"%an\",%n  \"date\": \"%ad\",%n  \"message\": \"%s\"%n}'";
+            string formatString =
+                "--pretty=format:\"{%n  \\\"commit\\\": \\\"%h\\\",%n  \\\"author\\\": \\\"%an\\\",%n  \\\"date\\\": \\\"%ad\\\",%n  \\\"message\\\": \\\"%s\\\"%n},\"";
+
+            string gitCommand1 = $"log --all --full-history {formatString} --date=iso8601";
+            string gitCommand = $"{gitCommand1} -- \"{filePath}\"";
+
+            Process process = new Process();
+            ProcessStartInfo startInfo = new ProcessStartInfo
+            {
+                FileName = "git",
+                Arguments = gitCommand,
+                RedirectStandardInput = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            process.StartInfo = startInfo;
+
+            process.Start();
+
+            string errorOutput = await process.StandardError.ReadToEndAsync();
+            Debug.Log($"Error Output: {errorOutput}");
+
+            // Read the output asynchronously
+            string output = await ReadOutputAsync(process);
+
+
+            process.WaitForExit();
+
+            ProcessOutputData(output);
+
+            Debug.unityLogger.Log("RealTimeCollabManager | CompareFileHistory | end");
+        }
+
+        private async UniTask<string> ReadOutputAsync(Process process)
+        {
+            Debug.unityLogger.Log("RealTimeCollabManager | ReadOutputAsync | start");
+            using (StreamReader reader = process.StandardOutput)
+            {
+                return await reader.ReadToEndAsync();
+            }
+        }
+
+
+        private void ProcessOutputData(string data)
+        {
+            Debug.unityLogger.Log($"RealTimeCollabManager | ProcessOutputData | start data:{data}");
+            if (!string.IsNullOrEmpty(data))
+            {
+                data = data.Substring(0, data.Length - 1);
+                data = "[" + data + "]";
+
+                List<GitLogResultModel> gitLogResult = JsonConvert.DeserializeObject<List<GitLogResultModel>>(data);
+                
+                JArray commitObject = JArray.Parse(data);
+                Debug.Log($"Commit JSON:\n{commitObject.ToString(Formatting.Indented)}");
+            }
         }
     }
 
